@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Guntur Scale</title>
+    
+    <!-- PWA Setup -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3063/3063189.png">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Service Worker terdaftar'))
+            .catch(err => console.log('Service Worker gagal terdaftar:', err));
+        });
+      }
+    </script>
+    <!-- End PWA Setup -->
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome untuk ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e2e8f0; 
+            touch-action: pan-y;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            background-color: #f8fafc;
+            min-height: 100dvh; 
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0,0,0,0.1);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 10px;
+        }
+
+        @keyframes slideUpFade {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .toast-animate {
+            animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .digital-input-bg {
+            background: linear-gradient(145deg, #ffffff, #f1f5f9);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="app-container">
+        
+        <!-- Header Utama (Sticky Top, Rapi dan Hemat Ruang) -->
+        <div class="sticky top-0 z-40 w-full shadow-sm bg-[#f8fafc]">
+            <header class="bg-gradient-to-r from-indigo-600 to-blue-500 text-white pt-3 pb-3 px-4 rounded-b-2xl shadow-md">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2.5">
+                        <div class="bg-white/20 p-2 rounded-xl backdrop-blur-sm shrink-0">
+                            <i class="fa-solid fa-scale-unbalanced text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-base font-black leading-tight tracking-wide">GUNTUR SCALE</h1>
+                            <p id="subtitle-tara" class="text-[9px] text-indigo-100 font-medium mt-0.5 opacity-90 leading-tight">Auto-Tara: Drum 5 Kg</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-1.5 shrink-0">
+                        <button onclick="bukaPengaturan()" class="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-colors backdrop-blur-sm shadow-sm active:scale-95" title="Pengaturan Timbangan">
+                            <i class="fa-solid fa-gear text-base"></i>
+                        </button>
+                        <button onclick="resetSemua()" class="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-colors backdrop-blur-sm shadow-sm active:scale-95" title="Reset Semua Data">
+                            <i class="fa-solid fa-rotate-right text-base"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Segmented Control untuk Tab -->
+                <div class="mt-3 bg-black/10 p-1 rounded-xl flex relative overflow-x-auto custom-scrollbar gap-1">
+                    <button onclick="switchView('input')" id="tab-nav-input" class="flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all bg-white text-indigo-600 shadow-sm whitespace-nowrap">Input Timbangan</button>
+                    <button onclick="switchView('rekap')" id="tab-nav-rekap" class="flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all text-white hover:bg-white/10 whitespace-nowrap">Rekap Arsip</button>
+                    <button onclick="switchView('detail')" id="tab-nav-detail" class="flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all text-white hover:bg-white/10 whitespace-nowrap">Detail Rekap</button>
+                </div>
+            </header>
+        </div>
+
+        <!-- Notifikasi (Toast) Container -->
+        <div id="toastContainer" class="fixed bottom-36 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col items-center gap-2 pointer-events-none w-full max-w-[400px] px-4"></div>
+
+        <!-- Konten Utama -->
+        <main class="flex-1 px-4 py-3 pb-8 flex flex-col gap-4 relative z-10">
+            
+            <!-- AREA SUPPLIER -->
+            <section id="supplier-section" class="bg-white px-5 py-4 border border-slate-200 shadow-sm rounded-2xl flex flex-col gap-3 relative transition-all">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-bold text-slate-500 uppercase tracking-widest"><i class="fa-regular fa-calendar-days mr-1 text-indigo-500"></i> Tanggal Masuk</span>
+                    <span id="tanggal-hari-ini" class="font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-md"></span>
+                </div>
+                <div>
+                    <label for="namaSupplier" class="block text-[11px] font-black text-slate-700 mb-1.5 uppercase tracking-wider">
+                        <i class="fa-solid fa-truck-field mr-1 text-indigo-500"></i> Nama Supplier <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" id="namaSupplier" placeholder="Wajib diisi! Ketik nama supplier..." class="uppercase w-full pl-3 pr-10 py-3 border-2 rounded-xl outline-none transition-all text-sm font-bold text-slate-700 placeholder:font-medium placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10" oninput="this.value = this.value.toUpperCase(); updateSupplier(this.value)">
+                        <i class="fa-solid fa-pen absolute right-4 top-3.5 text-slate-400"></i>
+                    </div>
+                    <p id="supplier-warning" class="text-[10px] font-bold text-red-500 mt-1.5 flex items-center gap-1 hidden">
+                        <i class="fa-solid fa-circle-exclamation"></i> Kolom di atas wajib diisi untuk menggunakan timbangan.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Workspace Wrapper -->
+            <div id="workspace-wrapper" class="relative flex flex-col gap-4 flex-1">
+                
+                <!-- Overlay Kunci Area Kerja -->
+                <div id="lock-overlay" class="absolute inset-[-10px] z-30 bg-slate-50/60 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center opacity-0 pointer-events-none transition-all duration-300 hidden border border-white/50 shadow-inner">
+                    <div class="bg-white p-4 rounded-2xl shadow-xl flex flex-col items-center transform transition-transform duration-300" id="lock-modal">
+                        <div class="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-3 shadow-inner">
+                            <i class="fa-solid fa-lock text-xl"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-800 text-sm mb-1">Aplikasi Terkunci</h3>
+                        <p class="text-xs text-slate-500 text-center max-w-[200px] leading-relaxed">Silakan isi kolom <b class="text-red-500">Nama Supplier</b> di bagian atas untuk mulai.</p>
+                    </div>
+                </div>
+
+                <!-- Konten Workspace -->
+                <div id="workspace" class="flex flex-col gap-4 transition-all duration-300">
+                    
+                    <!-- Tab Kategori Grid -->
+                    <section class="grid grid-cols-2 gap-3">
+                        <button onclick="setCategory('BESAR')" id="tab-BESAR" class="p-3.5 rounded-2xl border-2 flex flex-col items-center justify-center transition-all text-center w-full relative bg-white border-slate-100 text-slate-400 hover:bg-slate-50 group">
+                            <div class="font-bold text-xs mb-1.5 uppercase tracking-wider group-hover:text-slate-600 transition-colors"><i class="fa-solid fa-fish text-sm"></i> <span id="btn-name-BESAR">BESAR</span></div>
+                            <div class="mb-1"><span id="total-BESAR" class="font-black text-2xl text-slate-700">0</span> <span class="text-xs font-semibold text-slate-400">kg</span></div>
+                            <div class="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-1 rounded-md flex items-center gap-1.5 w-full justify-between">
+                                <span><i class="fa-solid fa-layer-group"></i> <span id="count-BESAR">0</span></span>
+                                <span class="text-red-400 font-bold">-<span id="potongan-BESAR">0</span> kg</span>
+                            </div>
+                        </button>
+
+                        <button onclick="setCategory('TANGGUNG')" id="tab-TANGGUNG" class="p-3.5 rounded-2xl border-2 flex flex-col items-center justify-center transition-all text-center w-full relative bg-white border-slate-100 text-slate-400 hover:bg-slate-50 group">
+                            <div class="font-bold text-xs mb-1.5 uppercase tracking-wider group-hover:text-slate-600 transition-colors"><i class="fa-solid fa-fish-fins text-sm"></i> <span id="btn-name-TANGGUNG">TANGGUNG</span></div>
+                            <div class="mb-1"><span id="total-TANGGUNG" class="font-black text-2xl text-slate-700">0</span> <span class="text-xs font-semibold text-slate-400">kg</span></div>
+                            <div class="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-1 rounded-md flex items-center gap-1.5 w-full justify-between">
+                                <span><i class="fa-solid fa-layer-group"></i> <span id="count-TANGGUNG">0</span></span>
+                                <span class="text-red-400 font-bold">-<span id="potongan-TANGGUNG">0</span> kg</span>
+                            </div>
+                        </button>
+
+                        <button onclick="setCategory('KECIL')" id="tab-KECIL" class="p-3.5 rounded-2xl border-2 flex flex-col items-center justify-center transition-all text-center w-full relative bg-white border-slate-100 text-slate-400 hover:bg-slate-50 group">
+                            <div class="font-bold text-xs mb-1.5 uppercase tracking-wider group-hover:text-slate-600 transition-colors"><i class="fa-solid fa-fish text-[10px]"></i> <span id="btn-name-KECIL">KECIL</span></div>
+                            <div class="mb-1"><span id="total-KECIL" class="font-black text-2xl text-slate-700">0</span> <span class="text-xs font-semibold text-slate-400">kg</span></div>
+                            <div class="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-1 rounded-md flex items-center gap-1.5 w-full justify-between">
+                                <span><i class="fa-solid fa-layer-group"></i> <span id="count-KECIL">0</span></span>
+                                <span class="text-red-400 font-bold">-<span id="potongan-KECIL">0</span> kg</span>
+                            </div>
+                        </button>
+
+                        <button onclick="setCategory('ULING')" id="tab-ULING" class="p-3.5 rounded-2xl border-2 flex flex-col items-center justify-center transition-all text-center w-full relative bg-white border-slate-100 text-slate-400 hover:bg-slate-50 group">
+                            <div class="font-bold text-xs mb-1.5 uppercase tracking-wider group-hover:text-slate-600 transition-colors"><i class="fa-solid fa-fish rotate-[30deg] text-sm"></i> <span id="btn-name-ULING">ULING</span></div>
+                            <div class="mb-1"><span id="total-ULING" class="font-black text-2xl text-slate-700">0</span> <span class="text-xs font-semibold text-slate-400">kg</span></div>
+                            <div class="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-1 rounded-md flex items-center gap-1.5 w-full justify-between">
+                                <span><i class="fa-solid fa-layer-group"></i> <span id="count-ULING">0</span></span>
+                                <span class="text-red-400 font-bold">-<span id="potongan-ULING">0</span> kg</span>
+                            </div>
+                        </button>
+                    </section>
+
+                    <!-- Area Input Utama -->
+                    <section class="bg-white rounded-3xl shadow-[0_8px_30px_-6px_rgba(0,0,0,0.05)] p-5 border border-slate-100 relative overflow-hidden mt-1">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <i class="fa-solid fa-keyboard"></i> Masukkan Berat Kotor
+                            </h2>
+                            <span id="active-category-badge" class="px-3 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-black tracking-wider rounded-full uppercase shadow-sm">BESAR</span>
+                        </div>
+                        
+                        <div class="flex flex-col gap-4">
+                            <!-- Display Digital -->
+                            <div class="digital-input-bg rounded-2xl p-4 flex items-end justify-center border border-slate-200 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-500/20 transition-all cursor-text relative" onclick="document.getElementById('inputBerat').focus()">
+                                <input type="number" id="inputBerat" placeholder="0" class="w-full text-center text-7xl font-black bg-transparent outline-none text-slate-800 disabled:opacity-50 h-20 placeholder:text-slate-300" inputmode="decimal">
+                                <span class="text-slate-400 font-bold text-2xl absolute right-6 bottom-6 select-none">kg</span>
+                            </div>
+                            
+                            <!-- Tombol Eksekusi Besar -->
+                            <button id="btn-tambah" onclick="tambahData()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl shadow-[0_4px_15px_rgba(79,70,229,0.3)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 group">
+                                <i class="fa-solid fa-plus text-xl group-hover:rotate-90 transition-transform duration-300"></i>
+                                <span class="font-bold text-base tracking-wide" id="text-tambah">TAMBAH TIMBANGAN</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Ringkasan Grand Total Terintegrasi di Workspace -->
+                    <section class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl shadow-lg border border-slate-700 p-5 mt-1 relative overflow-hidden">
+                        <!-- Dekorasi Background -->
+                        <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
+                        <div class="absolute -left-10 -top-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                        
+                        <div class="flex justify-between items-center mb-3 border-b border-slate-700/50 pb-3 relative z-10">
+                            <h2 class="text-[11px] font-bold text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
+                                <i class="fa-solid fa-chart-pie text-indigo-400"></i> Ringkasan Total Keseluruhan
+                            </h2>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-3 relative z-10">
+                            <!-- 1. Total Kotor (Biru) -->
+                            <div class="flex flex-col items-center justify-center bg-blue-900/30 p-2.5 rounded-2xl border border-blue-700/40 transition-colors">
+                                <div class="text-[10px] text-blue-300 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                                    <i class="fa-solid fa-scale-balanced text-blue-400"></i> Total Kotor
+                                </div>
+                                <div class="font-bold text-blue-100 text-sm"><span id="grand-kotor">0</span> <span class="text-[10px] text-blue-300">kg</span></div>
+                            </div>
+                            
+                            <!-- 2. Total Bersih (Hijau/Emerald - Dibuat lebih menonjol) -->
+                            <div class="flex flex-col items-center justify-center bg-emerald-900/40 p-2.5 rounded-2xl border border-emerald-500/40 shadow-inner">
+                                <div class="text-[10px] text-emerald-300 font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                                    <i class="fa-solid fa-check-double text-emerald-400"></i> Total Bersih
+                                </div>
+                                <div class="font-black text-emerald-400 text-xl leading-tight"><span id="grand-bersih">0</span> <span class="text-[10px] text-emerald-500 font-bold">kg</span></div>
+                            </div>
+
+                            <!-- 3. Potong Tara (Merah/Rose) -->
+                            <div class="flex flex-col items-center justify-center bg-rose-900/20 p-2.5 rounded-2xl border border-rose-800/40">
+                                <div class="text-[10px] text-rose-300 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                                    <i class="fa-solid fa-scissors text-rose-400/80"></i> Potong Tara
+                                </div>
+                                <div class="font-bold text-rose-400 text-sm">-<span id="grand-potongan">0</span> <span class="text-[10px] text-rose-500/70">kg</span></div>
+                            </div>
+                            
+                            <!-- 4. Jml Timbangan (Kuning/Amber) -->
+                            <div class="flex flex-col items-center justify-center bg-amber-900/20 p-2.5 rounded-2xl border border-amber-800/40">
+                                <div class="text-[10px] text-amber-300 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                                    <i class="fa-solid fa-box text-amber-400"></i> Jml Timbangan
+                                </div>
+                                <div class="font-bold text-amber-100 text-sm"><span id="grand-drum">0</span> <span class="text-[10px] text-amber-300">drum</span></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Riwayat List -->
+                    <section class="bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col flex-1 min-h-[300px] mt-1">
+                        <div class="p-4 border-b border-slate-100 flex justify-between items-center rounded-t-3xl bg-slate-50/50 backdrop-blur-sm">
+                            <h2 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                <i class="fa-solid fa-clock-rotate-left text-slate-400"></i> Riwayat <span id="riwayat-title-badge" class="text-indigo-600 uppercase">BESAR</span>
+                            </h2>
+                            <div class="flex gap-1.5">
+                                <button id="btn-undo" onclick="undoAction()" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 active:scale-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fa-solid fa-arrow-rotate-left"></i> Undo
+                                </button>
+                                <button id="btn-redo" onclick="redoAction()" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 active:scale-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fa-solid fa-arrow-rotate-right"></i> Redo
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="flex-1 p-3" id="riwayat-container">
+                            <div id="empty-state" class="flex flex-col items-center justify-center h-full text-slate-400 py-10 opacity-70">
+                                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+                                    <i class="fa-solid fa-box-open text-2xl text-slate-300"></i>
+                                </div>
+                                <p class="text-sm font-medium">Belum ada timbangan</p>
+                            </div>
+                            <ul id="list-riwayat" class="flex flex-col gap-2.5"></ul>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Tab: Rekap Wrapper -->
+            <div id="rekap-wrapper" class="hidden flex-col gap-4 pb-10 mt-2">
+                <!-- Ticket / Receipt Style -->
+                <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 relative overflow-hidden" id="print-area">
+                     <!-- Decor -->
+                     <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-emerald-500"></div>
+                     <div class="absolute top-0 right-0 w-16 h-16 bg-indigo-50 rounded-full blur-2xl -mr-8 -mt-8"></div>
+                     
+                     <div class="text-center mb-6 mt-2 relative z-10">
+                         <h2 class="text-xl font-black text-slate-800 tracking-wide uppercase">Rekapitulasi</h2>
+                         <p class="text-[11px] text-slate-400 font-bold mt-1 tracking-wider uppercase">Guntur Scale</p>
+                     </div>
+
+                     <div class="flex justify-between items-center py-3 border-b-2 border-dashed border-slate-200 relative z-10">
+                         <span class="text-[11px] text-slate-500 font-bold uppercase">Tanggal</span>
+                         <span class="text-xs font-black text-slate-700" id="rekap-tanggal"></span>
+                     </div>
+                     <div class="flex justify-between items-center py-3 border-b-2 border-dashed border-slate-200 relative z-10">
+                         <span class="text-[11px] text-slate-500 font-bold uppercase">Supplier</span>
+                         <span class="text-sm font-black text-indigo-600 uppercase tracking-wide" id="rekap-supplier"></span>
+                     </div>
+
+                     <div class="py-5 flex flex-col gap-3 border-b-2 border-dashed border-slate-200 relative z-10">
+                         <div class="flex justify-between items-center">
+                             <span class="text-xs text-slate-600 font-bold flex items-center gap-2 uppercase"><i class="fa-solid fa-fish text-indigo-400 w-4"></i> <span id="rekap-name-BESAR">BESAR</span></span>
+                             <div class="text-right">
+                                 <div class="text-sm font-black text-slate-700"><span id="rekap-besar">0</span> <span class="text-[10px] text-slate-400">kg</span></div>
+                                 <div class="text-[10px] text-slate-400 font-medium"><span id="rekap-drum-besar">0</span> drum</div>
+                             </div>
+                         </div>
+                         <div class="flex justify-between items-center">
+                             <span class="text-xs text-slate-600 font-bold flex items-center gap-2 uppercase"><i class="fa-solid fa-fish-fins text-emerald-400 w-4"></i> <span id="rekap-name-TANGGUNG">TANGGUNG</span></span>
+                             <div class="text-right">
+                                 <div class="text-sm font-black text-slate-700"><span id="rekap-tanggung">0</span> <span class="text-[10px] text-slate-400">kg</span></div>
+                                 <div class="text-[10px] text-slate-400 font-medium"><span id="rekap-drum-tanggung">0</span> drum</div>
+                             </div>
+                         </div>
+                         <div class="flex justify-between items-center">
+                             <span class="text-xs text-slate-600 font-bold flex items-center gap-2 uppercase"><i class="fa-solid fa-fish text-amber-400 w-4 text-[10px]"></i> <span id="rekap-name-KECIL">KECIL</span></span>
+                             <div class="text-right">
+                                 <div class="text-sm font-black text-slate-700"><span id="rekap-kecil">0</span> <span class="text-[10px] text-slate-400">kg</span></div>
+                                 <div class="text-[10px] text-slate-400 font-medium"><span id="rekap-drum-kecil">0</span> drum</div>
+                             </div>
+                         </div>
+                         <div class="flex justify-between items-center">
+                             <span class="text-xs text-slate-600 font-bold flex items-center gap-2 uppercase"><i class="fa-solid fa-fish rotate-[30deg] text-purple-400 w-4"></i> <span id="rekap-name-ULING">ULING</span></span>
+                             <div class="text-right">
+                                 <div class="text-sm font-black text-slate-700"><span id="rekap-uling">0</span> <span class="text-[10px] text-slate-400">kg</span></div>
+                                 <div class="text-[10px] text-slate-400 font-medium"><span id="rekap-drum-uling">0</span> drum</div>
+                             </div>
+                         </div>
+                     </div>
+
+                     <div class="bg-slate-50 rounded-2xl p-5 mt-5 border border-slate-100 relative z-10">
+                         <div class="flex justify-between items-center mb-2">
+                             <span class="text-[10px] text-slate-400 font-bold uppercase">Total Kotor</span>
+                             <span class="text-xs font-bold text-slate-600"><span id="rekap-kotor">0</span> kg</span>
+                         </div>
+                         <div class="flex justify-between items-center mb-2">
+                             <span class="text-[10px] text-red-400 font-bold uppercase">Potongan (Tara)</span>
+                             <span class="text-xs font-bold text-red-500">-<span id="rekap-tara">0</span> kg</span>
+                         </div>
+                         <div class="flex justify-between items-center mb-4">
+                             <span class="text-[10px] text-slate-400 font-bold uppercase">Total Drum</span>
+                             <span class="text-xs font-bold text-slate-600"><span id="rekap-drum">0</span> drum</span>
+                         </div>
+                         <div class="pt-4 border-t border-slate-200 flex justify-between items-end">
+                             <span class="text-xs text-indigo-500 font-black uppercase tracking-wider">GRAND TOTAL</span>
+                             <span class="text-3xl font-black text-indigo-600 leading-none"><span id="rekap-bersih">0</span> <span class="text-sm text-indigo-400">kg</span></span>
+                         </div>
+                     </div>
+                </div>
+                
+                <p class="text-center text-[10px] font-medium text-slate-400 mt-2"><i class="fa-solid fa-mobile-screen-button"></i> Screenshot area putih di atas untuk diarsipkan.</p>
+            </div>
+
+            <!-- Tab: Detail Rekap Wrapper -->
+            <div id="detail-wrapper" class="hidden flex-col gap-4 pb-10 mt-2">
+                <div id="detail-rekap-content" class="flex flex-col gap-4">
+                    <!-- Di-generate melalui JS -->
+                </div>
+                <p class="text-center text-[10px] font-medium text-slate-400 mt-2"><i class="fa-solid fa-mobile-screen-button"></i> Scroll ke bawah untuk melihat semua rincian.</p>
+            </div>
+
+        </main>
+
+        <!-- Footer Sticky DIHAPUS (Sekarang terintegrasi di Workspace) -->
+
+        <!-- Modal Pengaturan -->
+        <div id="pengaturan-modal" class="fixed inset-0 z-[110] flex items-center justify-center p-5 hidden transition-opacity duration-300">
+            <!-- Backdrop Transparan -->
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="tutupPengaturan()"></div>
+            <!-- Konten (Akan tepat di center layaknya Flexbox) -->
+            <div class="bg-white rounded-3xl shadow-2xl p-6 max-w-sm w-full relative z-10 animate-[slideUpFade_0.3s_ease-out_forwards]">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                    <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-gear text-indigo-500"></i> Pengaturan Aplikasi</h3>
+                    <button onclick="tutupPengaturan()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Potongan Drum Default (Tara)</label>
+                    <div class="relative">
+                        <input type="number" id="input-default-tara" class="w-full text-center font-black py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none text-xl text-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all" inputmode="decimal">
+                        <span class="absolute right-4 top-3 font-bold text-slate-400">kg</span>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Nama Kategori Ikan</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="relative">
+                            <span class="absolute left-2 top-2 text-[9px] text-slate-400 font-bold uppercase">1</span>
+                            <input type="text" id="input-nama-besar" class="w-full text-center font-bold py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:border-indigo-500 outline-none uppercase" placeholder="BESAR">
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-2 top-2 text-[9px] text-slate-400 font-bold uppercase">2</span>
+                            <input type="text" id="input-nama-tanggung" class="w-full text-center font-bold py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:border-indigo-500 outline-none uppercase" placeholder="TANGGUNG">
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-2 top-2 text-[9px] text-slate-400 font-bold uppercase">3</span>
+                            <input type="text" id="input-nama-kecil" class="w-full text-center font-bold py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:border-indigo-500 outline-none uppercase" placeholder="KECIL">
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-2 top-2 text-[9px] text-slate-400 font-bold uppercase">4</span>
+                            <input type="text" id="input-nama-uling" class="w-full text-center font-bold py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:border-indigo-500 outline-none uppercase" placeholder="ULING">
+                        </div>
+                    </div>
+                    <p class="text-[9px] text-slate-400 mt-2 leading-relaxed italic">*Ubah nama di atas jika jenis sortir ikan berbeda.</p>
+                </div>
+                
+                <button onclick="simpanPengaturan()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold flex justify-center items-center gap-2 shadow-lg shadow-indigo-500/30 active:scale-95 transition-all">
+                    <i class="fa-solid fa-check"></i> SIMPAN PENGATURAN
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let state = {
+            supplier: '',
+            kategori: { BESAR: 0, TANGGUNG: 0, KECIL: 0, ULING: 0 },
+            categoryNames: { BESAR: 'BESAR', TANGGUNG: 'TANGGUNG', KECIL: 'KECIL', ULING: 'ULING' },
+            riwayat: [], // Data schema: { id, waktu, kategori, kotor, tara, bersih }
+            activeCategory: 'BESAR',
+            editingId: null,
+            defaultTara: 5
+        };
+
+        // --- Variabel Undo / Redo ---
+        let pastStates = [];
+        let futureStates = [];
+
+        function saveHistoryState() {
+            pastStates.push(JSON.stringify({
+                supplier: state.supplier,
+                riwayat: state.riwayat
+            }));
+            futureStates = []; // Reset redo queue jika ada aksi baru
+            if (pastStates.length > 30) pastStates.shift(); // Batas maksimum 30 histori
+        }
+
+        const colorPalette = {
+            'BESAR': { main: 'indigo', hex: 'text-indigo-600' },
+            'TANGGUNG': { main: 'emerald', hex: 'text-emerald-600' },
+            'KECIL': { main: 'amber', hex: 'text-amber-600' },
+            'ULING': { main: 'purple', hex: 'text-purple-600' }
+        };
+
+        function updateSupplier(val) {
+            state.supplier = val.toUpperCase();
+            simpanData();
+            updateUI();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            muatData();
+            
+            const optionsTanggal = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('tanggal-hari-ini').innerText = new Date().toLocaleDateString('id-ID', optionsTanggal);
+            
+            if (state.supplier) {
+                document.getElementById('namaSupplier').value = state.supplier;
+            }
+            
+            if (!state.activeCategory) state.activeCategory = 'BESAR';
+            state.editingId = null;
+            
+            hitungUlangTotal();
+            updateUI();
+            
+            const inputBerat = document.getElementById('inputBerat');
+
+            inputBerat.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    tambahData();
+                }
+            });
+        });
+
+        function setCategory(cat) {
+            state.activeCategory = cat;
+            state.editingId = null;
+            simpanData();
+            updateUI();
+            
+            const input = document.getElementById('inputBerat');
+            input.focus();
+            
+            const btn = document.getElementById(`tab-${cat}`);
+            btn.classList.add('scale-95');
+            setTimeout(() => btn.classList.remove('scale-95'), 150);
+        }
+
+        function hitungUlangTotal() {
+            state.kategori = { BESAR: 0, TANGGUNG: 0, KECIL: 0, ULING: 0 };
+            state.riwayat.forEach(record => {
+                if (state.kategori.hasOwnProperty(record.kategori)) {
+                    state.kategori[record.kategori] = parseFloat((state.kategori[record.kategori] + record.bersih).toFixed(2));
+                }
+            });
+        }
+
+        function tambahData() {
+            if (!state.supplier || state.supplier.trim() === '') {
+                showToast('Isi Nama Supplier terlebih dahulu!', 'error');
+                document.getElementById('namaSupplier').focus();
+                return;
+            }
+
+            const jenisKategori = state.activeCategory;
+            const inputEl = document.getElementById('inputBerat');
+            const beratKotorStr = inputEl.value;
+            
+            if (!beratKotorStr || beratKotorStr.trim() === '') {
+                showToast('Ketik berat kotor!', 'error');
+                inputEl.focus();
+                return;
+            }
+
+            const beratKotor = parseFloat(beratKotorStr);
+
+            if (isNaN(beratKotor) || beratKotor <= 0) {
+                showToast('Angka tidak valid!', 'error');
+                inputEl.value = '';
+                return;
+            }
+
+            const tara = state.defaultTara;
+            if (beratKotor <= tara) {
+                showToast(`Berat kotor harus lebih dari ${tara}kg (tara)`, 'error');
+                return;
+            }
+
+            const beratBersih = parseFloat((beratKotor - tara).toFixed(2));
+            
+            const record = {
+                id: Date.now(),
+                waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                kategori: jenisKategori,
+                kotor: beratKotor,
+                tara: tara,
+                bersih: beratBersih
+            };
+
+            saveHistoryState(); // <-- Menyimpan status sebelum data berubah
+
+            state.riwayat.unshift(record);
+
+            hitungUlangTotal();
+            simpanData();
+            updateUI();
+            
+            const customName = state.categoryNames[jenisKategori];
+            const drumKe = state.riwayat.filter(r => r.kategori === jenisKategori).length;
+            showToast(`Drum ke-${drumKe} Berhasil: ${beratBersih}kg (${customName})`, 'success');
+
+            inputEl.value = '';
+            inputEl.focus();
+
+            // Efek sukses pada tombol tambah
+            const btnTambah = document.getElementById('btn-tambah');
+            const textTambah = document.getElementById('text-tambah');
+            const iconTambah = btnTambah.querySelector('i');
+            
+            // Simpan state awal
+            const originalBg = 'bg-indigo-600';
+            const originalHover = 'hover:bg-indigo-700';
+            const originalText = 'TAMBAH TIMBANGAN';
+            const originalIcon = 'fa-plus';
+
+            // Ubah ke state sukses
+            btnTambah.classList.remove(originalBg, originalHover);
+            btnTambah.classList.add('bg-emerald-500', 'hover:bg-emerald-600');
+            textTambah.innerText = 'BERHASIL DITAMBAHKAN';
+            iconTambah.classList.remove(originalIcon);
+            iconTambah.classList.add('fa-check');
+
+            // Kembalikan ke state awal setelah 1.5 detik
+            setTimeout(() => {
+                btnTambah.classList.remove('bg-emerald-500', 'hover:bg-emerald-600');
+                btnTambah.classList.add(originalBg, originalHover);
+                textTambah.innerText = originalText;
+                iconTambah.classList.remove('fa-check');
+                iconTambah.classList.add(originalIcon);
+            }, 1500);
+        }
+
+        function mulaiEdit(id) {
+            state.editingId = id;
+            updateUI();
+        }
+
+        function batalEdit() {
+            state.editingId = null;
+            updateUI();
+        }
+
+        // Fungsi menghitung perubahan di UI Edit
+        function hitungEditBersih(id) {
+            const previewEl = document.getElementById(`editBersih-${id}`);
+            if (!previewEl) return;
+            
+            const valKotor = document.getElementById(`editKotor-${id}`).value;
+            const valTara = document.getElementById(`editTara-${id}`).value;
+            
+            const kotor = parseFloat(valKotor);
+            const tara = parseFloat(valTara);
+
+            if (isNaN(kotor) || isNaN(tara)) {
+                previewEl.innerText = '0';
+                return;
+            }
+            
+            const bersih = parseFloat((kotor - tara).toFixed(2));
+            previewEl.innerText = formatAngka(bersih);
+        }
+
+        // Fungsi simpan dari mode edit
+        function simpanEdit(id) {
+            const inputKotorEl = document.getElementById(`editKotor-${id}`);
+            const inputTaraEl = document.getElementById(`editTara-${id}`);
+            if (!inputKotorEl || !inputTaraEl) return;
+            
+            const kotor = parseFloat(inputKotorEl.value);
+            const tara = parseFloat(inputTaraEl.value);
+            
+            if (isNaN(kotor) || kotor <= 0) {
+                showToast('Berat kotor tidak valid!', 'error'); return;
+            }
+            if (isNaN(tara) || tara < 0) {
+                showToast('Tara tidak valid!', 'error'); return;
+            }
+            if (kotor <= tara) {
+                showToast('Kotor harus lebih besar dari Tara!', 'error'); return;
+            }
+            
+            const index = state.riwayat.findIndex(r => r.id === id);
+            if (index !== -1) {
+                const beratBersih = parseFloat((kotor - tara).toFixed(2));
+                
+                saveHistoryState(); // <-- Menyimpan status sebelum data diedit
+
+                state.riwayat[index].kotor = kotor;
+                state.riwayat[index].tara = tara;
+                state.riwayat[index].bersih = beratBersih;
+                
+                hitungUlangTotal();
+                state.editingId = null; 
+                simpanData();
+                updateUI();
+                showToast('Data diperbarui!', 'success');
+            }
+        }
+
+        function undoAction() {
+            if (pastStates.length === 0) return;
+            
+            futureStates.push(JSON.stringify({
+                supplier: state.supplier,
+                riwayat: state.riwayat
+            }));
+            
+            const prevStateStr = pastStates.pop();
+            const prevState = JSON.parse(prevStateStr);
+            state.supplier = prevState.supplier;
+            state.riwayat = prevState.riwayat;
+            
+            hitungUlangTotal();
+            state.editingId = null;
+            simpanData();
+            updateUI();
+            showToast('Undo berhasil dilakukan.', 'info');
+        }
+
+        function redoAction() {
+            if (futureStates.length === 0) return;
+            
+            pastStates.push(JSON.stringify({
+                supplier: state.supplier,
+                riwayat: state.riwayat
+            }));
+            
+            const nextStateStr = futureStates.pop();
+            const nextState = JSON.parse(nextStateStr);
+            state.supplier = nextState.supplier;
+            state.riwayat = nextState.riwayat;
+            
+            hitungUlangTotal();
+            state.editingId = null;
+            simpanData();
+            updateUI();
+            showToast('Redo berhasil dilakukan.', 'info');
+        }
+
+        function hapusRiwayat(id) {
+            const record = state.riwayat.find(r => r.id === id);
+            if(!record) return;
+
+            const div = document.createElement('div');
+            div.className = 'fixed inset-0 z-[100] flex items-center justify-center p-5';
+            div.innerHTML = `
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+                <div class="bg-white rounded-3xl shadow-2xl p-6 max-w-xs w-full relative z-10 animate-[slideUpFade_0.3s_ease-out_forwards]">
+                    <div class="w-14 h-14 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                        <i class="fa-solid fa-trash-can text-2xl"></i>
+                    </div>
+                    <h3 class="text-center text-lg font-bold text-slate-800 mb-2">Hapus Timbangan?</h3>
+                    <p class="text-center text-sm text-slate-500 mb-6 leading-relaxed">Apakah Anda yakin ingin menghapus riwayat timbangan <b>${record.bersih} kg</b> ini?</p>
+                    <div class="flex gap-3">
+                        <button id="btn-batal-hapus" class="flex-1 py-3 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 font-bold text-sm active:scale-95 transition-all">Batal</button>
+                        <button id="btn-konfirm-hapus" class="flex-1 py-3 rounded-xl text-white bg-red-500 hover:bg-red-600 font-bold text-sm shadow-lg shadow-red-500/30 active:scale-95 transition-all">Ya, Hapus</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(div);
+
+            document.getElementById('btn-batal-hapus').onclick = () => {
+                div.children[1].style.opacity = '0'; // Konten hilang
+                setTimeout(() => div.remove(), 300);
+            };
+            document.getElementById('btn-konfirm-hapus').onclick = () => {
+                eksekusiHapus(id);
+                div.remove();
+            };
+        }
+
+        function eksekusiHapus(id) {
+            const index = state.riwayat.findIndex(r => r.id === id);
+            if (index !== -1) {
+                saveHistoryState(); // <-- Menyimpan status sebelum data dihapus
+                
+                if (state.editingId === id) state.editingId = null;
+                state.riwayat.splice(index, 1);
+                
+                hitungUlangTotal();
+                simpanData();
+                updateUI();
+                showToast('Baris dihapus.', 'info');
+            }
+        }
+
+        function resetSemua() {
+            const div = document.createElement('div');
+            div.className = 'fixed inset-0 z-[100] flex items-center justify-center p-5';
+            div.innerHTML = `
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+                <div class="bg-white rounded-3xl shadow-2xl p-6 max-w-xs w-full relative z-10 animate-[slideUpFade_0.3s_ease-out_forwards]">
+                    <div class="w-14 h-14 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                        <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                    </div>
+                    <h3 class="text-center text-lg font-bold text-slate-800 mb-2">Hapus Semua Data?</h3>
+                    <p class="text-center text-sm text-slate-500 mb-6 leading-relaxed">Tindakan ini akan mereset supplier dan seluruh riwayat timbangan hari ini secara permanen.</p>
+                    <div class="flex flex-col gap-3">
+                        <button id="btn-konfirm-reset" class="w-full py-3.5 rounded-xl text-white bg-red-500 hover:bg-red-600 font-bold text-sm shadow-lg shadow-red-500/30 active:scale-95 transition-all">Ya, Hapus Data</button>
+                        <button id="btn-batal-reset" class="w-full py-3.5 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 font-bold text-sm active:scale-95 transition-all">Batal</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(div);
+
+            document.getElementById('btn-batal-reset').onclick = () => {
+                div.children[1].style.opacity = '0';
+                setTimeout(() => div.remove(), 300);
+            };
+            document.getElementById('btn-konfirm-reset').onclick = () => {
+                saveHistoryState(); // <-- Menyimpan status sebelum di-reset
+
+                state.supplier = '';
+                document.getElementById('namaSupplier').value = '';
+                state.kategori = { BESAR: 0, TANGGUNG: 0, KECIL: 0, ULING: 0 };
+                state.riwayat = [];
+                state.editingId = null;
+                simpanData();
+                updateUI();
+                div.remove();
+                showToast('Aplikasi di-reset.', 'success');
+            };
+        }
+
+        function updateUI() {
+            const hasSupplier = state.supplier && state.supplier.trim() !== '';
+            
+            // Update Subtitle dengan tara dinamis
+            const subTitle = document.getElementById('subtitle-tara');
+            if (subTitle) subTitle.innerText = `Auto-Tara: Drum ${state.defaultTara} Kg`;
+            
+            // Mengatur disable state untuk tombol Undo/Redo
+            const btnUndo = document.getElementById('btn-undo');
+            const btnRedo = document.getElementById('btn-redo');
+            if (btnUndo) btnUndo.disabled = pastStates.length === 0;
+            if (btnRedo) btnRedo.disabled = futureStates.length === 0;
+
+            // Elemen Kunci UI
+            const overlay = document.getElementById('lock-overlay');
+            const modal = document.getElementById('lock-modal');
+            const workspace = document.getElementById('workspace');
+            const inputBerat = document.getElementById('inputBerat');
+            
+            // Elemen Input Supplier & Warning
+            const inputSup = document.getElementById('namaSupplier');
+            const warnSup = document.getElementById('supplier-warning');
+            
+            // Sinkronisasi nilai input jika berubah melalui aksi Undo/Redo
+            if (inputSup.value !== state.supplier) {
+                inputSup.value = state.supplier;
+            }
+            
+            if (!hasSupplier) {
+                // Style peringatan merah menyala untuk kolom supplier
+                inputSup.classList.remove('border-slate-200', 'bg-slate-50', 'focus:border-indigo-500', 'focus:ring-indigo-500/10');
+                inputSup.classList.add('border-red-400', 'bg-red-50', 'ring-4', 'ring-red-500/20', 'focus:border-red-500', 'focus:ring-red-500/30');
+                warnSup.classList.remove('hidden');
+
+                // Kunci area kerja
+                overlay.classList.remove('hidden');
+                setTimeout(() => {
+                    overlay.classList.remove('opacity-0');
+                    overlay.classList.add('opacity-100');
+                    modal.classList.remove('scale-95');
+                modal.classList.add('scale-100');
+            }, 10);
+            workspace.classList.add('blur-[2px]', 'grayscale-[0.3]');
+            inputBerat.disabled = true;
+        } else {
+            // Kembalikan style normal kolom supplier
+                inputSup.classList.add('border-slate-200', 'bg-slate-50', 'focus:border-indigo-500', 'focus:ring-indigo-500/10');
+                inputSup.classList.remove('border-red-400', 'bg-red-50', 'ring-4', 'ring-red-500/20', 'focus:border-red-500', 'focus:ring-red-500/30');
+                warnSup.classList.add('hidden');
+
+                // Buka kunci area kerja
+                overlay.classList.remove('opacity-100');
+                overlay.classList.add('opacity-0');
+                modal.classList.remove('scale-100');
+            modal.classList.add('scale-95');
+            setTimeout(() => overlay.classList.add('hidden'), 300);
+            
+            workspace.classList.remove('blur-[2px]', 'grayscale-[0.3]');
+            inputBerat.disabled = false;
+        }
+
+        // 1. Update Tabs Kategori
+            const categories = ['BESAR', 'TANGGUNG', 'KECIL', 'ULING'];
+            
+            categories.forEach(cat => {
+                const btn = document.getElementById(`tab-${cat}`);
+                const totalEl = document.getElementById(`total-${cat}`);
+                const countEl = document.getElementById(`count-${cat}`);
+                const nameEl = document.getElementById(`btn-name-${cat}`);
+                const isAct = state.activeCategory === cat;
+                const color = colorPalette[cat].main;
+                
+                totalEl.innerText = formatAngka(state.kategori[cat]);
+                if (nameEl) nameEl.innerText = state.categoryNames[cat];
+                
+                const catRiwayat = state.riwayat.filter(r => r.kategori === cat);
+                const countItem = catRiwayat.length;
+                countEl.innerText = countItem;
+                
+                // Kalkulasi total potongan untuk kategori ini (custom tara)
+                const sumTaraCat = catRiwayat.reduce((sum, r) => sum + (r.tara !== undefined ? r.tara : state.defaultTara), 0);
+                document.getElementById(`potongan-${cat}`).innerText = formatAngka(sumTaraCat);
+                
+                let activeClass = `border-${color}-500 bg-${color}-50 text-${color}-700 ring-4 ring-${color}-500/10 z-10`;
+                let inactiveClass = 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50';
+                
+                if(cat==='BESAR' && isAct) activeClass = 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-4 ring-indigo-500/10 z-10 shadow-sm';
+                if(cat==='TANGGUNG' && isAct) activeClass = 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-4 ring-emerald-500/10 z-10 shadow-sm';
+                if(cat==='KECIL' && isAct) activeClass = 'border-amber-500 bg-amber-50 text-amber-700 ring-4 ring-amber-500/10 z-10 shadow-sm';
+                if(cat==='ULING' && isAct) activeClass = 'border-purple-500 bg-purple-50 text-purple-700 ring-4 ring-purple-500/10 z-10 shadow-sm';
+
+                btn.className = `p-3.5 rounded-2xl border-2 flex flex-col items-center justify-center transition-all text-center w-full relative group ${isAct ? activeClass : inactiveClass}`;
+            });
+
+            // 2. Update Label UI
+            const activeColor = colorPalette[state.activeCategory].main;
+            const actBadge = document.getElementById('active-category-badge');
+            const badgeBg = {'BESAR':'bg-indigo-100 text-indigo-700','TANGGUNG':'bg-emerald-100 text-emerald-700','KECIL':'bg-amber-100 text-amber-700','ULING':'bg-purple-100 text-purple-700'};
+            
+            actBadge.className = `px-3 py-1.5 text-[10px] font-black tracking-wider rounded-full uppercase shadow-sm ${badgeBg[state.activeCategory]}`;
+            actBadge.innerText = state.categoryNames[state.activeCategory];
+            
+            const riwayatTitle = document.getElementById('riwayat-title-badge');
+            riwayatTitle.innerText = state.categoryNames[state.activeCategory];
+            riwayatTitle.className = `${colorPalette[state.activeCategory].hex} uppercase`;
+
+            // 3. Update Grand Total
+            let grandKotor = 0;
+            let grandBersih = 0;
+            let grandPotongan = 0;
+            let grandDrum = state.riwayat.length;
+            
+            state.riwayat.forEach(r => {
+                grandKotor += r.kotor;
+                grandBersih += r.bersih;
+                grandPotongan += (r.tara !== undefined ? r.tara : state.defaultTara);
+            });
+
+            document.getElementById('grand-kotor').innerText = formatAngka(grandKotor);
+            document.getElementById('grand-bersih').innerText = formatAngka(grandBersih);
+            document.getElementById('grand-potongan').innerText = formatAngka(grandPotongan);
+            document.getElementById('grand-drum').innerText = grandDrum;
+
+            // 4. Update List Riwayat
+            const listEl = document.getElementById('list-riwayat');
+            const emptyState = document.getElementById('empty-state');
+            const activeRiwayat = state.riwayat.filter(r => r.kategori === state.activeCategory);
+            const totalItems = activeRiwayat.length;
+
+            listEl.innerHTML = '';
+            
+            if (activeRiwayat.length === 0) {
+                emptyState.style.display = 'flex';
+            } else {
+                emptyState.style.display = 'none';
+                const mainColor = colorPalette[state.activeCategory].main;
+                const borderAccent = {'BESAR':'border-l-indigo-500','TANGGUNG':'border-l-emerald-500','KECIL':'border-l-amber-500','ULING':'border-l-purple-500'}[state.activeCategory];
+                const textAccent = {'BESAR':'text-indigo-600','TANGGUNG':'text-emerald-600','KECIL':'text-amber-600','ULING':'text-purple-600'}[state.activeCategory];
+                const bgAccent = {'BESAR':'bg-indigo-50','TANGGUNG':'bg-emerald-50','KECIL':'bg-amber-50','ULING':'bg-purple-50'}[state.activeCategory];
+
+                activeRiwayat.forEach((record, index) => {
+                    const li = document.createElement('li');
+                    const itemNumber = totalItems - index;
+                    const rTara = record.tara !== undefined ? record.tara : state.defaultTara;
+
+                    if (state.editingId === record.id) {
+                        li.className = `${bgAccent} border border-slate-200 p-3 rounded-2xl shadow-sm flex flex-col gap-3 transition-all`;
+                        li.innerHTML = `
+                            <div class="flex items-center gap-2 justify-between border-b border-white/50 pb-2">
+                                <span class="text-xs font-black ${textAccent} flex items-center gap-1.5 uppercase tracking-wide">
+                                    <i class="fa-solid fa-pen-to-square"></i> Edit Drum ke-${itemNumber}
+                                </span>
+                                <span class="text-[10px] text-slate-500 font-medium bg-white/50 px-2 py-0.5 rounded-full"><i class="fa-regular fa-clock"></i> ${record.waktu}</span>
+                            </div>
+                            <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-100">
+                                <div class="flex-1 relative">
+                                    <span class="absolute left-2 top-2 text-[9px] text-slate-400 font-bold uppercase">Kotor</span>
+                                    <input type="number" id="editKotor-${record.id}" value="${record.kotor}" oninput="hitungEditBersih(${record.id})" class="w-full text-center font-black pt-5 pb-1 px-1 bg-slate-50 rounded-lg outline-none text-lg text-slate-700 focus:ring-2 focus:ring-${mainColor}-300 transition-shadow" inputmode="decimal">
+                                </div>
+                                <div class="text-slate-300 text-xs"><i class="fa-solid fa-minus"></i></div>
+                                <div class="w-16 relative shrink-0">
+                                    <span class="absolute left-2 top-2 text-[9px] text-red-400 font-bold uppercase">Tara</span>
+                                    <input type="number" id="editTara-${record.id}" value="${rTara}" oninput="hitungEditBersih(${record.id})" class="w-full text-center font-black pt-5 pb-1 px-1 bg-red-50 rounded-lg outline-none text-lg text-red-600 focus:ring-2 focus:ring-red-300 transition-shadow border border-red-100" inputmode="decimal">
+                                </div>
+                                <div class="text-slate-300 text-xs"><i class="fa-solid fa-equals"></i></div>
+                                <div class="text-right shrink-0 w-[70px]">
+                                    <div class="text-[9px] text-slate-400 font-bold uppercase mb-1">Bersih</div>
+                                    <div class="font-black ${textAccent} text-xl leading-none"><span id="editBersih-${record.id}">${formatAngka(record.bersih)}</span></div>
+                                </div>
+                            </div>
+                            <div class="flex justify-end gap-2 mt-1">
+                                <button onclick="batalEdit()" class="px-4 py-2 text-xs bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-xl font-bold flex items-center gap-1.5 active:scale-95 transition-all">
+                                    Batal
+                                </button>
+                                <button onclick="simpanEdit(${record.id})" class="px-5 py-2 text-xs bg-slate-800 text-white hover:bg-slate-700 rounded-xl font-bold flex items-center gap-1.5 shadow-md shadow-slate-200 active:scale-95 transition-all">
+                                    <i class="fa-solid fa-check"></i> Simpan
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        li.className = `bg-white border-y border-r border-l-4 ${borderAccent} border-y-slate-100 border-r-slate-100 p-3 rounded-2xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.02)] flex justify-between items-center gap-3 transition-all hover:bg-slate-50 relative overflow-hidden`;
+                        li.innerHTML = `
+                            <div class="absolute -right-4 -top-4 w-12 h-12 rounded-full ${bgAccent} opacity-50"></div>
+                            <div class="bg-slate-100 text-slate-500 font-black w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs border border-slate-200 shadow-sm relative z-10">
+                                ${itemNumber}
+                            </div>
+                            <div class="flex-1 min-w-0 relative z-10 flex flex-col justify-center">
+                                <div class="text-[10px] text-slate-400 font-medium mb-1"><i class="fa-regular fa-clock mr-0.5"></i> ${record.waktu}</div>
+                                <div class="flex items-baseline gap-2">
+                                    <div class="text-slate-400 font-medium text-xs line-through decoration-slate-300 decoration-2">${formatAngka(record.kotor)}</div>
+                                    <div class="text-red-400 font-bold text-[10px] bg-red-50 px-1 rounded border border-red-100" title="Potongan Tara">-${formatAngka(rTara)}</div>
+                                    <div class="text-slate-300 text-[10px]"><i class="fa-solid fa-arrow-right"></i></div>
+                                    <div class="${textAccent} font-black text-sm">${formatAngka(record.bersih)} <span class="text-[10px] font-bold opacity-70">kg</span></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center shrink-0 relative z-10 bg-white/80 backdrop-blur rounded-lg p-0.5 border border-slate-100">
+                                <button onclick="mulaiEdit(${record.id})" class="text-slate-400 hover:${textAccent} p-2.5 transition-colors rounded-md hover:bg-slate-50" title="Edit">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <div class="w-px h-4 bg-slate-200 mx-0.5"></div>
+                                <button onclick="hapusRiwayat(${record.id})" class="text-slate-300 hover:text-red-500 p-2.5 transition-colors rounded-md hover:bg-slate-50" title="Hapus">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        `;
+                    }
+                    listEl.appendChild(li);
+                });
+            }
+        }
+
+        function formatAngka(angka) {
+            return Number.isInteger(angka) ? angka.toString() : angka.toFixed(2).replace(/\.?0+$/, '');
+        }
+
+        function simpanData() {
+            try { localStorage.setItem('timbanganRemangState', JSON.stringify(state)); } catch(e){}
+        }
+
+        function muatData() {
+            try {
+                const saved = localStorage.getItem('timbanganRemangState');
+                if (saved) {
+                    state = JSON.parse(saved);
+                    // Migrasi data lama
+                    if (state.defaultTara === undefined) state.defaultTara = 5;
+                    if (state.categoryNames === undefined) {
+                        state.categoryNames = { BESAR: 'BESAR', TANGGUNG: 'TANGGUNG', KECIL: 'KECIL', ULING: 'ULING' };
+                    }
+                    if(state.riwayat) {
+                        state.riwayat = state.riwayat.map(r => {
+                            if (r.tara === undefined) r.tara = 5; // fallback ke 5 untuk old record
+                            return r;
+                        });
+                    }
+                }
+            } catch(e){}
+        }
+
+        // --- View Tab Switcher ---
+        function switchView(view) {
+            const wrapInput = document.getElementById('workspace-wrapper');
+            const wrapRekap = document.getElementById('rekap-wrapper');
+            const wrapDetail = document.getElementById('detail-wrapper');
+            const supSec = document.getElementById('supplier-section');
+            
+            const btnInput = document.getElementById('tab-nav-input');
+            const btnRekap = document.getElementById('tab-nav-rekap');
+            const btnDetail = document.getElementById('tab-nav-detail');
+
+            if (view === 'input') {
+                wrapInput.classList.remove('hidden');
+                supSec.classList.remove('hidden');
+                
+                wrapRekap.classList.add('hidden');
+                wrapRekap.classList.remove('flex');
+                
+                wrapDetail.classList.add('hidden');
+                wrapDetail.classList.remove('flex');
+                
+                btnInput.className = "flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all bg-white text-indigo-600 shadow-sm whitespace-nowrap";
+                btnRekap.className = "flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all text-white hover:bg-white/10 whitespace-nowrap";
+                btnDetail.className = "flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all text-white hover:bg-white/10 whitespace-nowrap";
+            } else if (view === 'rekap') {
+                wrapInput.classList.add('hidden');
+                supSec.classList.add('hidden'); // Sembunyikan bagian atas agar layar maksimal untuk di-screenshot
+                
+                wrapRekap.classList.remove('hidden');
+                wrapRekap.classList.add('flex');
+                
+                wrapDetail.classList.add('hidden');
+                wrapDetail.classList.remove('flex');
+                
+                btnRekap.className = "flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all bg-white text-indigo-600 shadow-sm whitespace-nowrap";
+                btnInput.className = "flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all text-white hover:bg-white/10 whitespace-nowrap";
+                btnDetail.className = "flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all text-white hover:bg-white/10 whitespace-nowrap";
+                
+                updateRekapUI();
+            } else if (view === 'detail') {
+                wrapInput.classList.add('hidden');
+                supSec.classList.add('hidden');
+                
+                wrapRekap.classList.add('hidden');
+                wrapRekap.classList.remove('flex');
+                
+                wrapDetail.classList.remove('hidden');
+                wrapDetail.classList.add('flex');
+                
+                btnDetail.className = "flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all bg-white text-indigo-600 shadow-sm whitespace-nowrap";
+                btnInput.className = "flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all text-white hover:bg-white/10 whitespace-nowrap";
+                btnRekap.className = "flex-1 py-1.5 px-2 min-w-fit text-xs font-bold rounded-lg transition-all text-white hover:bg-white/10 whitespace-nowrap";
+                
+                updateDetailRekapUI();
+            }
+        }
+
+        function updateRekapUI() {
+            const optionsTanggal = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('rekap-tanggal').innerText = new Date().toLocaleDateString('id-ID', optionsTanggal);
+            document.getElementById('rekap-supplier').innerText = state.supplier || '-';
+
+            const categories = ['BESAR', 'TANGGUNG', 'KECIL', 'ULING'];
+            categories.forEach(cat => {
+                document.getElementById(`rekap-${cat.toLowerCase()}`).innerText = formatAngka(state.kategori[cat]);
+                
+                // Update text kategori di laporan dengan custom nama
+                const rekapNameEl = document.getElementById(`rekap-name-${cat}`);
+                if (rekapNameEl) rekapNameEl.innerText = state.categoryNames[cat];
+
+                const drumCount = state.riwayat.filter(r => r.kategori === cat).length;
+                document.getElementById(`rekap-drum-${cat.toLowerCase()}`).innerText = drumCount;
+            });
+
+            let grandKotor = 0; let grandBersih = 0; let grandPotongan = 0; let grandDrum = state.riwayat.length;
+            state.riwayat.forEach(r => { 
+                grandKotor += r.kotor; 
+                grandBersih += r.bersih; 
+                grandPotongan += (r.tara !== undefined ? r.tara : state.defaultTara);
+            });
+
+            document.getElementById('rekap-kotor').innerText = formatAngka(grandKotor);
+            document.getElementById('rekap-tara').innerText = formatAngka(grandPotongan);
+            document.getElementById('rekap-drum').innerText = grandDrum;
+            document.getElementById('rekap-bersih').innerText = formatAngka(grandBersih);
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-slate-800 text-white';
+            let icon = 'fa-circle-info';
+            
+            if (type === 'success') { bgClass = 'bg-emerald-500 text-white'; icon = 'fa-check-circle'; } 
+            else if (type === 'error') { bgClass = 'bg-red-500 text-white'; icon = 'fa-triangle-exclamation'; }
+
+            toast.className = `${bgClass} px-5 py-3.5 rounded-2xl shadow-xl shadow-black/10 flex items-center gap-3 text-sm font-bold toast-animate relative overflow-hidden`;
+            toast.innerHTML = `
+                <div class="absolute inset-0 bg-white/10 w-1/2 -skew-x-12 translate-x-[-150%] animate-[shimmer_1.5s_infinite]"></div>
+                <i class="fa-solid ${icon} text-lg relative z-10"></i> <span class="break-words relative z-10">${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                toast.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        const style = document.createElement('style');
+        style.innerHTML = `@keyframes shimmer { 100% { transform: translateX(250%); } }`;
+        document.head.appendChild(style);
+
+        // --- Fungsi Pengaturan ---
+        function bukaPengaturan() {
+            document.getElementById('input-default-tara').value = state.defaultTara;
+            
+            // Populate input nama kategori
+            document.getElementById('input-nama-besar').value = state.categoryNames.BESAR;
+            document.getElementById('input-nama-tanggung').value = state.categoryNames.TANGGUNG;
+            document.getElementById('input-nama-kecil').value = state.categoryNames.KECIL;
+            document.getElementById('input-nama-uling').value = state.categoryNames.ULING;
+
+            const modal = document.getElementById('pengaturan-modal');
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+            }, 10);
+        }
+
+        function tutupPengaturan() {
+            const modal = document.getElementById('pengaturan-modal');
+            
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function simpanPengaturan() {
+            const valTara = parseFloat(document.getElementById('input-default-tara').value);
+            if (isNaN(valTara) || valTara < 0) {
+                showToast('Nilai tara tidak valid!', 'error');
+                return;
+            }
+
+            const namaB = document.getElementById('input-nama-besar').value.trim() || 'BESAR';
+            const namaT = document.getElementById('input-nama-tanggung').value.trim() || 'TANGGUNG';
+            const namaK = document.getElementById('input-nama-kecil').value.trim() || 'KECIL';
+            const namaU = document.getElementById('input-nama-uling').value.trim() || 'ULING';
+            
+            saveHistoryState();
+            state.defaultTara = valTara;
+            state.categoryNames = { BESAR: namaB, TANGGUNG: namaT, KECIL: namaK, ULING: namaU };
+            
+            simpanData();
+            updateUI();
+            tutupPengaturan();
+            showToast(`Pengaturan berhasil disimpan!`, 'success');
+        }
+
+        // --- Fungsi Halaman Detail Rekap & Copy WA ---
+
+        function updateDetailRekapUI() {
+            const content = document.getElementById('detail-rekap-content');
+            
+            const optionsTanggal = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const t = new Date().toLocaleDateString('id-ID', optionsTanggal);
+            const namaSup = (state.supplier && state.supplier.trim() !== '') ? state.supplier.trim() : '-';
+
+            // Peta warna tema untuk tiap kategori
+            const theme = {
+                'BESAR': { bg: 'bg-indigo-50', text: 'text-indigo-700', textLight: 'text-indigo-600', badge: 'bg-indigo-100 text-indigo-600', border: 'border-indigo-100' },
+                'TANGGUNG': { bg: 'bg-emerald-50', text: 'text-emerald-700', textLight: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-600', border: 'border-emerald-100' },
+                'KECIL': { bg: 'bg-amber-50', text: 'text-amber-700', textLight: 'text-amber-600', badge: 'bg-amber-100 text-amber-600', border: 'border-amber-100' },
+                'ULING': { bg: 'bg-purple-50', text: 'text-purple-700', textLight: 'text-purple-600', badge: 'bg-purple-100 text-purple-600', border: 'border-purple-100' }
+            };
+
+            let html = `
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 flex flex-col relative overflow-hidden shrink-0">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                    
+                    <div class="flex flex-col gap-1 mb-4 pb-4 border-b border-dashed border-slate-200 relative z-10">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest"><i class="fa-solid fa-truck-field mr-1 text-indigo-400"></i> NAMA SUPPLIER</span>
+                        <span class="text-2xl font-black text-indigo-700 uppercase tracking-tight leading-tight">${namaSup}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center relative z-10">
+                        <span class="text-[11px] text-slate-500 font-bold uppercase tracking-wider"><i class="fa-regular fa-calendar-days mr-1 text-indigo-400"></i> Tanggal Masuk</span>
+                        <span class="text-xs font-bold text-slate-800 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">${t}</span>
+                    </div>
+                </div>
+            `;
+
+            const categories = ['BESAR', 'TANGGUNG', 'KECIL', 'ULING'];
+            
+            let grandKotor = 0; let grandBersih = 0; let grandPotongan = 0; let grandDrum = state.riwayat.length;
+            state.riwayat.forEach(r => { 
+                grandKotor += r.kotor; 
+                grandBersih += r.bersih; 
+                grandPotongan += (r.tara !== undefined ? r.tara : state.defaultTara);
+            });
+
+            categories.forEach(cat => {
+                if (state.kategori[cat] > 0) {
+                    const c = theme[cat];
+                    const customName = state.categoryNames[cat];
+                    const catRiwayat = state.riwayat.filter(r => r.kategori === cat).reverse(); // Di-reverse agar tampil urut dari drum ke-1
+                    
+                    html += `
+                        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden shrink-0">
+                            <div class="${c.bg} p-4 border-b ${c.border} flex justify-between items-center">
+                                <h3 class="font-black ${c.text} text-sm flex items-center gap-2 tracking-wide uppercase"><i class="fa-solid fa-fish"></i> ${customName}</h3>
+                                <span class="text-[11px] font-bold ${c.badge} px-3 py-1 rounded-lg shadow-sm border ${c.border}">${catRiwayat.length} drum</span>
+                            </div>
+                            <div class="overflow-hidden">
+                                <table class="w-full text-left">
+                                    <thead>
+                                        <tr class="bg-slate-50/50 text-slate-400 text-[10px] uppercase tracking-wider border-b border-slate-100">
+                                            <th class="py-3 px-2 font-bold w-10 text-center">No</th>
+                                            <th class="py-3 px-2 font-bold text-center">Kotor</th>
+                                            <th class="py-3 px-2 font-bold text-center">Tara</th>
+                                            <th class="py-3 px-2 font-bold text-right">Bersih</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-50">
+                    `;
+                    
+                    catRiwayat.forEach((r, i) => {
+                        const rTara = r.tara !== undefined ? r.tara : state.defaultTara;
+                        html += `
+                            <tr class="hover:bg-slate-50 transition-colors">
+                                <td class="py-3 px-2 text-center text-[11px] font-bold text-slate-400">${i + 1}</td>
+                                <td class="py-3 px-2 text-center text-xs font-bold text-slate-500">${formatAngka(r.kotor)}</td>
+                                <td class="py-3 px-2 text-center text-[11px] font-bold text-red-500 bg-red-50/30">-${formatAngka(rTara)}</td>
+                                <td class="py-3 px-2 text-right text-sm font-black ${c.textLight}">${formatAngka(r.bersih)}</td>
+                            </tr>
+                        `;
+                    });
+
+                    // Hitung rincian per kategori
+                    let catKotor = 0;
+                    let catPotongan = 0;
+                    catRiwayat.forEach(r => {
+                        catKotor += r.kotor;
+                        catPotongan += (r.tara !== undefined ? r.tara : state.defaultTara);
+                    });
+                    let catDrum = catRiwayat.length;
+                    let catBersih = state.kategori[cat];
+
+                    html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="bg-slate-50 p-5 border-t border-slate-200 flex flex-col gap-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs text-slate-500 font-medium">Total Drum</span>
+                                    <span class="text-xs font-bold text-slate-700">${catDrum} drum</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs text-slate-500 font-medium">Total Kotor</span>
+                                    <span class="text-xs font-bold text-slate-700">${formatAngka(catKotor)} kg</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs text-red-400 font-medium">Total Potongan (Tara)</span>
+                                    <span class="text-xs font-bold text-red-500">-${formatAngka(catPotongan)} kg</span>
+                                </div>
+                                <div class="flex justify-between items-center border-t border-slate-200 pt-3 mt-1">
+                                    <span class="text-[11px] font-black ${c.textLight} uppercase tracking-wider">Total Bersih</span>
+                                    <span class="text-xl font-black ${c.text}">${formatAngka(catBersih)} <span class="text-xs font-bold opacity-70">kg</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            // Tampilkan Pesan Jika Belum Ada Data
+            if (grandDrum === 0) {
+                html += `
+                    <div class="text-center py-10 shrink-0 bg-white rounded-3xl border border-slate-200">
+                        <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fa-solid fa-box-open text-2xl text-slate-300"></i>
+                        </div>
+                        <p class="text-slate-500 font-medium text-sm">Belum ada riwayat timbangan</p>
+                    </div>
+                `;
+            }
+
+            // Kartu Grand Total (Gelap Elegan)
+            html += `
+                <div class="bg-slate-800 text-white p-6 rounded-3xl shadow-lg mt-2 relative overflow-hidden border border-slate-700 shrink-0">
+                    <!-- Aksen background -->
+                    <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-slate-700 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+                    
+                    <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-600/50 pb-4 flex items-center gap-2 relative z-10"><i class="fa-solid fa-calculator text-slate-300"></i> GRAND TOTAL KESELURUHAN</h3>
+                    
+                    <div class="flex flex-col gap-3 relative z-10 mb-5">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-300 font-medium">Total Kotor</span>
+                            <span class="text-sm font-bold text-slate-100">${formatAngka(grandKotor)} kg</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-red-400 font-medium">Total Potongan (Tara)</span>
+                            <span class="text-sm font-bold text-red-400">-${formatAngka(grandPotongan)} kg</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-300 font-medium">Total Input</span>
+                            <span class="text-sm font-bold text-slate-100">${grandDrum} drum</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-end border-t border-slate-600/50 pt-5 relative z-10">
+                        <span class="text-xs font-black text-emerald-400 uppercase tracking-wider">Total Bersih</span>
+                        <span class="text-4xl font-black text-emerald-400 leading-none tracking-tight">${formatAngka(grandBersih)} <span class="text-sm text-emerald-600 tracking-normal font-bold">kg</span></span>
+                    </div>
+                </div>
+                
+                <div class="shrink-0 pt-2 pb-6">
+                    <button onclick="salinKeWhatsApp()" class="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white py-4 rounded-2xl font-bold flex justify-center items-center gap-2 shadow-lg shadow-green-500/30 active:scale-95 transition-all text-sm tracking-wide">
+                        <i class="fa-brands fa-whatsapp text-xl"></i> SALIN KE WHATSAPP
+                    </button>
+                </div>
+            `;
+
+            content.innerHTML = html;
+        }
+
+        function salinKeWhatsApp() {
+            if (!state.supplier || state.supplier.trim() === '') return;
+            
+            const optionsTanggal = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const t = new Date().toLocaleDateString('id-ID', optionsTanggal);
+            const namaSup = state.supplier.trim() !== '' ? state.supplier.trim() : '-';
+            
+            let grandKotor = 0; let grandBersih = 0; let grandPotongan = 0; let grandDrum = state.riwayat.length;
+            
+            state.riwayat.forEach(r => { 
+                grandKotor += r.kotor; 
+                grandBersih += r.bersih; 
+                grandPotongan += (r.tara !== undefined ? r.tara : state.defaultTara); 
+            });
+            
+            let text = `*REKAP TIMBANGAN IKAN REMANG*\nTanggal: ${t}\nSupplier: *${namaSup}*\n\n`;
+            
+            const categories = ['BESAR', 'TANGGUNG', 'KECIL', 'ULING'];
+            categories.forEach(cat => {
+                if (state.kategori[cat] > 0) {
+                    const customName = state.categoryNames[cat];
+                    text += `*${customName}*:\n`;
+                    const catRiwayat = state.riwayat.filter(r => r.kategori === cat).reverse();
+                    
+                    let catPotongan = 0;
+                    catRiwayat.forEach((r, i) => {
+                        const rTara = r.tara !== undefined ? r.tara : state.defaultTara;
+                        catPotongan += rTara;
+                        text += `${i + 1}. Kotor: ${formatAngka(r.kotor)}kg | Tara: ${formatAngka(rTara)}kg -> Bersih: ${formatAngka(r.bersih)}kg\n`;
+                    });
+                    
+                    const catDrum = catRiwayat.length;
+                    text += `_Total Drum: ${catDrum} | Potongan: ${formatAngka(catPotongan)} kg_\n`;
+                    text += `_Total Bersih: ${formatAngka(state.kategori[cat])} kg_\n\n`;
+                }
+            });
+
+            text += `========================\n`;
+            text += `*GRAND TOTAL KOTOR:* ${formatAngka(grandKotor)} kg\n`;
+            text += `*GRAND TOTAL BERSIH:* ${formatAngka(grandBersih)} kg\n`;
+            text += `*GRAND TOTAL POTONGAN:* ${formatAngka(grandPotongan)} kg\n`;
+            text += `*GRAND TOTAL DRUM:* ${grandDrum} drum\n`;
+            text += `========================\n`;
+
+            const textArea = document.createElement("textarea");
+            textArea.value = text; 
+            document.body.appendChild(textArea);
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showToast('Format WhatsApp Berhasil Disalin!', 'success');
+            } catch (err) {
+                showToast('Gagal menyalin teks.', 'error');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+    </script>
+</body>
+</html>
