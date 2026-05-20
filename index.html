@@ -219,8 +219,35 @@
                         </div>
                     </section>
 
+                    <!-- Riwayat List -->
+                    <section class="bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col flex-1 min-h-[300px] mt-1">
+                        <div class="p-4 border-b border-slate-100 flex justify-between items-center rounded-t-3xl bg-slate-50/50 backdrop-blur-sm">
+                            <h2 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                <i class="fa-solid fa-clock-rotate-left text-slate-400"></i> Riwayat <span id="riwayat-title-badge" class="text-indigo-600 uppercase">BESAR</span>
+                            </h2>
+                            <div class="flex gap-1.5">
+                                <button id="btn-undo" onclick="undoAction()" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 active:scale-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fa-solid fa-arrow-rotate-left"></i> Undo
+                                </button>
+                                <button id="btn-redo" onclick="redoAction()" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 active:scale-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fa-solid fa-arrow-rotate-right"></i> Redo
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="flex-1 p-3" id="riwayat-container">
+                            <div id="empty-state" class="flex flex-col items-center justify-center h-full text-slate-400 py-10 opacity-70">
+                                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+                                    <i class="fa-solid fa-box-open text-2xl text-slate-300"></i>
+                                </div>
+                                <p class="text-sm font-medium">Belum ada timbangan</p>
+                            </div>
+                            <ul id="list-riwayat" class="flex flex-col gap-2.5"></ul>
+                        </div>
+                    </section>
+
                     <!-- Ringkasan Grand Total Terintegrasi di Workspace -->
-                    <section class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl shadow-lg border border-slate-700 p-5 mt-1 relative overflow-hidden">
+                    <section class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl shadow-lg border border-slate-700 p-5 mt-1 mb-2 relative overflow-hidden">
                         <!-- Dekorasi Background -->
                         <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
                         <div class="absolute -left-10 -top-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -263,33 +290,6 @@
                                 </div>
                                 <div class="font-bold text-amber-100 text-sm"><span id="grand-drum">0</span> <span class="text-[10px] text-amber-300">drum</span></div>
                             </div>
-                        </div>
-                    </section>
-
-                    <!-- Riwayat List -->
-                    <section class="bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col flex-1 min-h-[300px] mt-1">
-                        <div class="p-4 border-b border-slate-100 flex justify-between items-center rounded-t-3xl bg-slate-50/50 backdrop-blur-sm">
-                            <h2 class="text-sm font-bold text-slate-700 flex items-center gap-2">
-                                <i class="fa-solid fa-clock-rotate-left text-slate-400"></i> Riwayat <span id="riwayat-title-badge" class="text-indigo-600 uppercase">BESAR</span>
-                            </h2>
-                            <div class="flex gap-1.5">
-                                <button id="btn-undo" onclick="undoAction()" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 active:scale-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <i class="fa-solid fa-arrow-rotate-left"></i> Undo
-                                </button>
-                                <button id="btn-redo" onclick="redoAction()" class="text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 active:scale-95 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <i class="fa-solid fa-arrow-rotate-right"></i> Redo
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="flex-1 p-3" id="riwayat-container">
-                            <div id="empty-state" class="flex flex-col items-center justify-center h-full text-slate-400 py-10 opacity-70">
-                                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
-                                    <i class="fa-solid fa-box-open text-2xl text-slate-300"></i>
-                                </div>
-                                <p class="text-sm font-medium">Belum ada timbangan</p>
-                            </div>
-                            <ul id="list-riwayat" class="flex flex-col gap-2.5"></ul>
                         </div>
                     </section>
                 </div>
